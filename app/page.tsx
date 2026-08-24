@@ -1,69 +1,94 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { CalendarDays, FileText, Sparkles, Table2, Users, Wand2 } from "lucide-react";
+import AutoTab from "@/components/AutoTab";
+import CalendarioTab from "@/components/CalendarioTab";
+import DatosTab from "@/components/DatosTab";
+import DisponibilidadTab from "@/components/DisponibilidadTab";
+import GruposTab from "@/components/GruposTab";
+import ReportesTab from "@/components/ReportesTab";
+import { Badge, Stat, cx } from "@/components/ui";
+import { useStore } from "@/lib/store";
+
+const TABS = [
+  { id: "datos", label: "Datos", icon: Table2, Comp: DatosTab },
+  { id: "disponibilidades", label: "Disponibilidades", icon: Users, Comp: DisponibilidadTab },
+  { id: "grupos", label: "Grupos", icon: Sparkles, Comp: GruposTab },
+  { id: "auto", label: "Armado automático", icon: Wand2, Comp: AutoTab },
+  { id: "calendario", label: "Calendario", icon: CalendarDays, Comp: CalendarioTab },
+  { id: "reportes", label: "Reportes", icon: FileText, Comp: ReportesTab },
+] as const;
+
+export default function Page() {
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("datos");
+  const { ds, diag, state } = useStore();
+  const Active = TABS.find((t) => t.id === tab)!.Comp;
+  const s = diag?.stats;
+  const target = state.plan.settings.targetPerTalmid;
+  const sinArmar = state.plan.groups.length === 0;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto w-full max-w-[92rem] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Armador de Iamim Noraim</h1>
+          <p className="mt-1 text-sm text-muted">
+            Grupos de planificación de {state.plan.settings.minSize} a {state.plan.settings.maxSize} talmidim, una peulá por
+            evento, y los cambios de ejecución resueltos.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        {ds ? (
+          <Badge variant="accent">
+            {ds.talmidim.length} talmidim · {ds.slots.length} días · {ds.events.length} eventos
+          </Badge>
+        ) : null}
+      </header>
+
+      {s ? (
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <Stat label="Talmidim" value={s.talmidim} hint={`${s.agrupados} en un grupo`} />
+          <Stat label="Grupos" value={s.grupos} hint={`${s.gruposCompletos} con los dos días`} />
+          <Stat
+            label={`Dan ${target} peulot`}
+            value={`${s.conDosPeulot}/${s.talmidim}`}
+            tone={sinArmar ? undefined : s.conDosPeulot === s.talmidim ? "ok" : "warn"}
+          />
+          <Stat
+            label="Ejecutan lo suyo"
+            value={`${s.conPropiaPeula}/${s.talmidim}`}
+            hint={`${s.suplencias} cambio(s)`}
+            tone={sinArmar ? undefined : s.conPropiaPeula === s.talmidim ? "ok" : "err"}
+          />
+          <Stat
+            label="Problemas"
+            value={sinArmar ? "—" : s.errores}
+            hint={sinArmar ? "todavía no armaste grupos" : `${s.advertencias} advertencia(s)`}
+            tone={sinArmar ? undefined : s.errores ? "err" : "ok"}
+          />
         </div>
-      </main>
-    </div>
+      ) : null}
+
+      <nav className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-panel p-1">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cx(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                tab === t.id ? "bg-accent text-accent-fg" : "text-muted hover:bg-panel-2 hover:text-ink",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      <Active />
+    </main>
   );
 }
